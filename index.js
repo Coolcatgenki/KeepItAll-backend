@@ -167,7 +167,7 @@ app.get("/delete", async function(req,res){
     }
 })
 
-app.post("/toMark", async(req,res)=>{
+app.post("/toMark", async function (req,res){
     const mark=req.body.id;
     const id= req.user;
     console.log(mark);
@@ -193,7 +193,7 @@ app.post("/toMark", async(req,res)=>{
     } }  
 })
 
-app.post("/toPost", async (req,res)=>{
+app.post("/toPost", async function (req,res){
     const inserte=req.body;
     const id= req.user;
     const findUser= await userModel.findOne({_id:id});
@@ -214,7 +214,7 @@ app.post("/toPost", async (req,res)=>{
 //////////////////////////////////////////START OF THE EVENTS//////////////////////////////////////////////////////////////////////////////////
 
 
-app.post("/toPostEvent", passport.authenticate("jwt", {session:false}), async (req,res)=>{
+app.post("/toPostEvent", passport.authenticate("jwt", {session:false}), async function (req,res){
     const inserte=req.body;
     const id= req.user;
     const findUser= await userModel.findOne({_id:id});
