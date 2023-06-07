@@ -16,10 +16,7 @@ const StrategyJwt= passportJwt.Strategy;
 
 const app= express();
 
-app.use(cookieParser({
-    secret: process.env.SECRET,
-    secure: true,  //set to true is required on production with https
-}));
+app.use(cookieParser());
 
 app.use(session({
     secret: process.env.SECRET,
@@ -135,7 +132,7 @@ app.get("/logout", function (req, res) {
     })
 });
 
-app.post("/login", passport.authenticate("local", {failureMessage:true}), async function(req, res){
+app.post("/login", passport.authenticate("local", {failureMessage:true}), async function(req, res, next){
         const {username, password}= req.body;
         const userWithEmail = await userModel.findOne({username:username})
         x={id: userWithEmail._id, username: userWithEmail.username};
@@ -148,7 +145,7 @@ app.post("/login", passport.authenticate("local", {failureMessage:true}), async 
 
 //////////////////////////////////////////START OF THE LIST//////////////////////////////////////////////////////////////////////////////////
 
-app.get("/items", async function(req, res){ 
+app.get("/items", passport.authenticate("jwt", {session:false}), async function(req, res){ 
     const id= req.user;
     console.log(id);
     const findUser= await userModel.findOne({_id:id});
@@ -158,7 +155,7 @@ app.get("/items", async function(req, res){
     }
 })
 
-app.get("/delete", async function(req,res){
+app.get("/delete", passport.authenticate("jwt", {session:false}), async function(req,res){
     const id= req.user;
     const findUser= await userModel.findOneAndUpdate({_id:id}, {$set:{list:[]}});
     if(findUser){
@@ -167,7 +164,7 @@ app.get("/delete", async function(req,res){
     }
 })
 
-app.post("/toMark", async function (req,res){
+app.post("/toMark", passport.authenticate("jwt", {session:false}), async function (req,res){
     const mark=req.body.id;
     const id= req.user;
     console.log(mark);
@@ -193,7 +190,7 @@ app.post("/toMark", async function (req,res){
     } }  
 })
 
-app.post("/toPost", async function (req,res){
+app.post("/toPost", passport.authenticate("jwt", {session:false}), async function (req,res){
     const inserte=req.body;
     const id= req.user;
     const findUser= await userModel.findOne({_id:id});
