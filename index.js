@@ -17,6 +17,7 @@ const StrategyJwt= passportJwt.Strategy;
 const app= express();
 
 app.use(cookieParser({
+    secret: process.env.SECRET,
     secure: true,  //set to true is required on production with https
 }));
 
@@ -147,7 +148,7 @@ app.post("/login", passport.authenticate("local", {failureMessage:true}), async 
 
 //////////////////////////////////////////START OF THE LIST//////////////////////////////////////////////////////////////////////////////////
 
-app.get("/items",  passport.authenticate("jwt", {session:false}), async function(req, res){ 
+app.get("/items", async function(req, res){ 
     const id= req.user;
     console.log(id);
     const findUser= await userModel.findOne({_id:id});
@@ -157,7 +158,7 @@ app.get("/items",  passport.authenticate("jwt", {session:false}), async function
     }
 })
 
-app.get("/delete",  passport.authenticate("jwt", {session:false}), async function(req,res){
+app.get("/delete", async function(req,res){
     const id= req.user;
     const findUser= await userModel.findOneAndUpdate({_id:id}, {$set:{list:[]}});
     if(findUser){
@@ -192,7 +193,7 @@ app.post("/toMark", async(req,res)=>{
     } }  
 })
 
-app.post("/toPost", passport.authenticate("jwt", {session:false}), async (req,res)=>{
+app.post("/toPost", async (req,res)=>{
     const inserte=req.body;
     const id= req.user;
     const findUser= await userModel.findOne({_id:id});
