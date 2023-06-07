@@ -13,6 +13,7 @@ const cookieParser = require('cookie-parser');
 const passportJwt= require("passport-jwt");
 const ExtractJwt= passportJwt.ExtractJwt;
 const StrategyJwt= passportJwt.Strategy;
+const RedisStore = require("connect-redis").default;
 
 const app= express();
 
