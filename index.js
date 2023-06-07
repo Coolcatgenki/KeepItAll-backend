@@ -18,10 +18,16 @@ const app= express();
 
 app.use(cookieParser());
 
+app.set('trust proxy', 1);
+
 app.use(session({
+    cookie:{
+        secure: true,
+        maxAge:60000
+           },
     secret: process.env.SECRET,
-    resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
+    resave: false
 }))
 
 const corsOptions={
