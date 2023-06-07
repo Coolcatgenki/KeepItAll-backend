@@ -16,7 +16,9 @@ const StrategyJwt= passportJwt.Strategy;
 
 const app= express();
 
-app.use(cookieParser());
+app.use(cookieParser({
+    secure: true,  //set to true is required on production with https
+}));
 
 app.use(session({
     secret: process.env.SECRET,
