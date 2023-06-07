@@ -16,13 +16,13 @@ const StrategyJwt= passportJwt.Strategy;
 
 const app= express();
 
+app.use(cookieParser());
+
 app.use(session({
-    secret: "Out little fking secret meeen",
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: false,
 }))
-
-app.use(cookieParser("Out little fking secret meeen"));
 
 const corsOptions={
     origin: process.env.CLIENT_UR,
@@ -56,7 +56,7 @@ passport.use(
                     return req.cookies["_auth"];
                 },
             ]),
-            secretOrKey: "secret"
+            secretOrKey: process.env.SECRET
         },
         async function (jwtFromRequest, done){
             return await userModel.findOne({_id: jwtFromRequest.id})
@@ -137,7 +137,7 @@ app.post("/login", passport.authenticate("local", {failureMessage:true}), async 
         const userWithEmail = await userModel.findOne({username:username})
         x={id: userWithEmail._id, username: userWithEmail.username};
         console.log(x);
-        const jwtToken= jwt.sign(x, "secret");
+        const jwtToken= jwt.sign(x, process.env.SECRET);
         res.json({token: jwtToken, message: "Succesfully Loged!"})
 })
 
