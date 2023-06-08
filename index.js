@@ -4,65 +4,40 @@ const bodyParser= require("body-parser");
 const cors= require("cors");
 const mongoose= require("mongoose");
 const PORT= process.env.PORT || 4000;
-const session= require("express-session");
+const bcrypt= require("bcrypt");
+const saltRounds= 10;
 const passport=require("passport");
-const passportLocalMongoose= require("passport-local-mongoose");
 const schemas= require("./models/schemas");
 const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
 const passportJwt= require("passport-jwt");
 const ExtractJwt= passportJwt.ExtractJwt;
 const StrategyJwt= passportJwt.Strategy;
-const RedisStore = require("connect-redis").default;
 
 const app= express();
-
-app.use(cookieParser());
-
-app.set('trust proxy', 1);
-
-app.use(session({
-    cookie:{
-        secure: true,
-        maxAge:60000
-           },
-    secret: process.env.SECRET,
-    saveUninitialized: true,
-    resave: false
-}))
 
 const corsOptions={
     origin: process.env.CLIENT_UR,
     credentials:true,
     optionSuccessStatus: 200,
-    CORS: "AllowAll"
 };
 
 app.use(cors(corsOptions));
 
-app.use(passport.initialize());
-app.use(passport.session());
-
 const userSchema= new mongoose.Schema({
-    username: String,
+    username: {type: String, required: true, unique: true },
     password: String,
     email: {type: String, required: true, unique: true },
     list: [schemas.ListSchema],
     events:[schemas.EventSchema]
 });
 
-userSchema.plugin(passportLocalMongoose);
 
 const userModel= new mongoose.model("users", userSchema);
 
 passport.use(
     new StrategyJwt(
         {
-            jwtFromRequest: ExtractJwt.fromExtractors([
-                (req)=>{
-                    return req.cookies["_auth"];
-                },
-            ]),
+            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
             secretOrKey: process.env.SECRET
         },
         async function (jwtFromRequest, done){
@@ -76,15 +51,6 @@ passport.use(
         }
     )
 )
-passport.use(userModel.createStrategy());
-passport.serializeUser(function(user,done){
-    done(null,user.id);
-});
-passport.deserializeUser(function(user, cb) {
-    process.nextTick(function() {
-      return cb(null, user);
-    });
-});
  
 
 async function main(){
@@ -104,49 +70,48 @@ app.use(bodyParser.urlencoded({extended:true}));
 ///////////////////////////////////////////START OF THE SING UP AND REGISTER ACTION/////////////////////////////////////////////////////////////
 
 app.post("/register", function(req, res){
-    console.log(req.session);
-    const userEntered= {
-        username: req.body.username,
-        password: req.body.password,
-        email: req.body.email,
-        list: [],
+bcrypt.genSalt(saltRounds, function(_err, salt){
+    bcrypt.hash(req.body.password, salt, async function(err, hash){
+        const {email, username}= req.body;
+        const findedUserEmail= await userModel.findOne({email: email});
+        const findedUserUsername= await userModel.findOne({username: username});
+        if(!findedUserEmail && !findedUserUsername){
+        const userEntered= new userModel ({
+            username: username,
+            password: hash,
+            email: email,
+            list: [],
+        });
+        const saveRegister= await userEntered.save();
+        if(saveRegister){
+            res.send("Succesfully registered!");
+        }
     }
-    userModel.register(new userModel(userEntered), req.body.password, function(err, user){
-    if(err){
-        res.send({message:"Please try with another email or username."})
-    } else{
-        passport.authenticate("local")(req, res, function(){
-        res.send({message:"User information registered! Go back and Log In now!"});    
-        })
+    else{
+        res.send("Username or Email already exists!")
     }
-
-    })
+     })
+  })
 })
 app.get("/logout", function (req, res) {
-    req.session.passport= null;
-    req.session.save(function(err){
-        if(err) next(err)
-        req.session.regenerate(function(err){
-            if(err) next(err)
-            req.logOut(function(err){
-                if(err){
-                    console.log(err);
-                } else{
-                    res.send("Successfully logged Out")
-                }
-            });
-        })
-    })
+    res.send("Successfully logged Out");   
 });
 
-app.post("/login", passport.authenticate("local", {failureMessage:true}), async function(req, res, next){
+app.post("/login", async function(req, res, next){
         const {username, password}= req.body;
         const userWithEmail = await userModel.findOne({username:username})
-        x={id: userWithEmail._id, username: userWithEmail.username};
-        console.log(x);
-        const jwtToken= jwt.sign(x, process.env.SECRET);
-        res.json({token: jwtToken, message: "Succesfully Loged!"})
-})
+        bcrypt.compare(password, userWithEmail.password, function(err, result){
+        if(result===true){
+            x={id: userWithEmail._id, username: userWithEmail.username};
+            console.log(x);
+            const jwtToken= jwt.sign(x, process.env.SECRET);
+            res.json({token: jwtToken, message: "Succesfully Loged!"})
+        }
+        else{
+            console.log(err);
+        }
+        })
+ })
 
 ///////////////////////////////////////////END OF THE SING UP AND REGISTER ACTION/////////////////////////////////////////////////////////////
 
@@ -163,7 +128,7 @@ app.get("/items", passport.authenticate("jwt", {session:false}), async function(
 })
 
 app.get("/delete", passport.authenticate("jwt", {session:false}), async function(req,res){
-    const id= req.user;
+    const id= req.user.id;
     const findUser= await userModel.findOneAndUpdate({_id:id}, {$set:{list:[]}});
     if(findUser){
         const x= findUser.list
@@ -173,7 +138,7 @@ app.get("/delete", passport.authenticate("jwt", {session:false}), async function
 
 app.post("/toMark", passport.authenticate("jwt", {session:false}), async function (req,res){
     const mark=req.body.id;
-    const id= req.user;
+    const id= req.user.id;
     console.log(mark);
     const findUser=await userModel.findOne({_id:id});
     if(findUser){
@@ -199,7 +164,7 @@ app.post("/toMark", passport.authenticate("jwt", {session:false}), async functio
 
 app.post("/toPost", passport.authenticate("jwt", {session:false}), async function (req,res){
     const inserte=req.body;
-    const id= req.user;
+    const id= req.user.id;
     const findUser= await userModel.findOne({_id:id});
       (findUser.list).push({...inserte})
     const saveInserted= await findUser.save();
@@ -220,7 +185,7 @@ app.post("/toPost", passport.authenticate("jwt", {session:false}), async functio
 
 app.post("/toPostEvent", passport.authenticate("jwt", {session:false}), async function (req,res){
     const inserte=req.body;
-    const id= req.user;
+    const id= req.user.id;
     const findUser= await userModel.findOne({_id:id});
       (findUser.events).push({...inserte})
     const saveInserted= await findUser.save();
@@ -246,7 +211,7 @@ app.get("/events",  passport.authenticate("jwt", {session:false}), async functio
 
 app.post("/deleteEvent",  passport.authenticate("jwt", {session:false}), async function(req,res){
     const mark=req.body.id;
-    const id= req.user;
+    const id= req.user.id;
     const findedUser=await userModel.findOne({_id:id});
     if(findedUser){
     let marked= (findedUser.events).find(
