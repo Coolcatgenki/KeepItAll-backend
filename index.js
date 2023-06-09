@@ -100,6 +100,10 @@ app.get("/logout", function (req, res) {
 app.post("/login", async function(req, res, next){
         const {username, password}= req.body;
         const userWithEmail = await userModel.findOne({username:username})
+        if(userWithEmail===null){
+            res.send({message:"Failed"})
+        }
+        else{
         bcrypt.compare(password, userWithEmail.password, function(err, result){
         if(result===true){
             x={id: userWithEmail._id, username: userWithEmail.username};
@@ -108,9 +112,10 @@ app.post("/login", async function(req, res, next){
             res.json({token: jwtToken, message: "Succesfully Loged!"})
         }
         else{
+            res.send({message:"Failed"})
             console.log(err);
         }
-        })
+        })}
  })
 
 ///////////////////////////////////////////END OF THE SING UP AND REGISTER ACTION/////////////////////////////////////////////////////////////
@@ -125,6 +130,7 @@ app.get("/items", passport.authenticate("jwt", {session:false}), async function(
         const x= findUser.list
          res.send(x);
     }
+    
 })
 
 app.get("/delete", passport.authenticate("jwt", {session:false}), async function(req,res){
