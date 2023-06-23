@@ -84,11 +84,28 @@ bcrypt.genSalt(saltRounds, function(_err, salt){
         });
         const saveRegister= await userEntered.save();
         if(saveRegister){
-            res.send("Succesfully registered!");
+            const {username, password}= req.body;
+        const userWithEmail = await userModel.findOne({username:username})
+        if(userWithEmail===null){
+            res.send({message:"Failed"})
+        }
+        else{
+        bcrypt.compare(password, userWithEmail.password, function(err, result){
+        if(result===true){
+            x={id: userWithEmail._id, username: userWithEmail.username};
+            console.log(x);
+            const jwtToken= jwt.sign(x, process.env.SECRET);
+            res.json({token: jwtToken, message: "Succesfully Registered!"})
+        }
+        else{
+            res.send({message:"Failed"})
+            console.log(err);
+        }
+        })}
         }
     }
     else{
-        res.send("Username or Email already exists!")
+        res.send({message: "Username or Email already exists!"})
     }
      })
   })
